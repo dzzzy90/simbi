@@ -385,6 +385,9 @@ private struct RecordingSettingsPane: View {
                 Toggle("Capture system audio", isOn: $settings.systemAudioEnabled)
                     // The last active source can't be turned off.
                     .disabled(!settings.micEnabled)
+                Toggle("Listen for the Teams end-call chime to stop recording", isOn: $settings.stopOnTeamsEndChime)
+                    .disabled(!settings.systemAudioEnabled)
+                    .help("Requires system audio capture. Applies to the next recording.")
             }
         }
         .formStyle(.grouped)

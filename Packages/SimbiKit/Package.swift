@@ -85,7 +85,8 @@ let package = Package(
                 "CLibOpus",
                 "CLibWebM",
                 .product(name: "FluidAudio", package: "FluidAudio"),
-            ]
+            ],
+            resources: [.copy("Resources/Teams_Call_Ended.pcm"), .copy("Resources/Teams_Meet_Up_Leave.pcm")]
         ),
         // ChatSession persists its thread id in the note's state.json.
         .target(name: "CodexKit", dependencies: ["SimbiKit"]),

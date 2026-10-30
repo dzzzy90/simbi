@@ -95,6 +95,22 @@ public final class MixedCapture: @unchecked Sendable {
     private var system: (any SystemCapturing)?
     /// Mixer state shared by the mic and system consumer tasks.
     private let mixer: OSAllocatedUnfairLock<AudioMixer>
+    private let detector = OSAllocatedUnfairLock<TeamsEndTone?>(initialState: nil)
+    private func armDetector(_ callback: (@Sendable () -> Void)?) {
+        guard callback != nil else { return }
+        do {
+            let matcher = try TeamsEndTone()
+            detector.withLock { $0 = matcher }
+        } catch {
+            Log.recording.warning("Teams end sound unavailable: \(error)")
+        }
+    }
+
+    private func match(_ samples: [Float], callback: (@Sendable () -> Void)?) {
+        guard let callback else { return }
+        if detector.withLock({ $0?.consume(samples) == true }) { callback() }
+    }
+
     private var systemTask: Task<Void, Never>?
 
     /// Test seam: the spike/tests inject a fake system source.
@@ -123,7 +139,7 @@ public final class MixedCapture: @unchecked Sendable {
     /// Starts capture and returns the mixed stream. Failure of the only
     /// enabled source throws; system-audio failure with the mic on degrades
     /// to mic-only (check `systemAudioFailure`).
-    public func start(config: Config) throws -> AsyncStream<[Float]> {
+    public func start(config: Config, onTeamsEnd: (@Sendable () -> Void)? = nil) throws -> AsyncStream<[Float]> {
         guard config.micEnabled || config.systemAudioEnabled else {
             throw MixedCaptureError.noSourcesEnabled
         }
@@ -134,7 +150,17 @@ public final class MixedCapture: @unchecked Sendable {
             let stream = try capture.start()
             system = capture
             systemAudioActive = true
-            return stream
+            guard onTeamsEnd != nil else { return stream }
+            armDetector(onTeamsEnd)
+            let (output, continuation) = AsyncStream.makeStream(of: [Float].self)
+            systemTask = Task {
+                for await batch in stream {
+                    continuation.yield(batch)
+                    match(batch, callback: onTeamsEnd)
+                }
+                continuation.finish()
+            }
+            return output
         }
         let micStream = try mic.start(deviceUID: config.micDeviceUID)
         guard config.systemAudioEnabled else { return micStream }
@@ -151,11 +177,13 @@ public final class MixedCapture: @unchecked Sendable {
         }
         systemAudioActive = true
 
+        armDetector(onTeamsEnd)
         let (mixed, continuation) = AsyncStream.makeStream(of: [Float].self)
         systemTask = Task { [weak self] in
             for await batch in systemStream {
                 guard let self else { break }
                 self.mixer.withLock { $0.pushSystem(batch) }
+                self.match(batch, callback: onTeamsEnd)
             }
         }
         Task { [weak self] in

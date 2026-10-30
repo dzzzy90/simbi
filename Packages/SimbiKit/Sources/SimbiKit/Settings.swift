@@ -61,6 +61,7 @@ public struct SimbiSettings: Codable, Equatable, Sendable {
     /// Specific input device UID; nil follows the system default.
     public var micDeviceUID: String?
     public var systemAudioEnabled: Bool
+    public var stopOnTeamsEndChime: Bool = true
 
     public static let `default` = SimbiSettings()
 
@@ -102,7 +103,7 @@ public struct SimbiSettings: Codable, Equatable, Sendable {
         case transcriptFixerEnabled, aiNotesEnabled, noteTitleEnabled
         case fixerModel, converterModel, summaryModel, titleModel
         case fixerEffort, converterEffort, summaryEffort, titleEffort
-        case micEnabled, micDeviceUID, systemAudioEnabled
+        case micEnabled, micDeviceUID, systemAudioEnabled, stopOnTeamsEndChime
         /// Pre-mic-picker files stored `"mic"` / `"micAndSystem"` here.
         case audioSource
     }
@@ -128,6 +129,7 @@ public struct SimbiSettings: Codable, Equatable, Sendable {
         systemAudioEnabled =
             try container.decodeIfPresent(Bool.self, forKey: .systemAudioEnabled)
             ?? (legacySource != "mic")
+        stopOnTeamsEndChime = try container.decodeIfPresent(Bool.self, forKey: .stopOnTeamsEndChime) ?? true
         if !micEnabled && !systemAudioEnabled {
             micEnabled = true
         }
@@ -149,6 +151,7 @@ public struct SimbiSettings: Codable, Equatable, Sendable {
         try container.encode(micEnabled, forKey: .micEnabled)
         try container.encodeIfPresent(micDeviceUID, forKey: .micDeviceUID)
         try container.encode(systemAudioEnabled, forKey: .systemAudioEnabled)
+        try container.encode(stopOnTeamsEndChime, forKey: .stopOnTeamsEndChime)
     }
 
     public static func load(from url: URL) throws -> SimbiSettings {

@@ -249,11 +249,19 @@ public final class RecordingController {
                 deviceUID = nil
                 micBanner = "Selected microphone isn't connected. Using the system default."
             }
+            let stopOnChime: @Sendable () -> Void = { [weak self, weak capture] in
+                Task { @MainActor in
+                    guard let self, let capture, self.capture === capture,
+                          self.status == .recording else { return }
+                    await self.stop()
+                }
+            }
             let stream = try capture.start(
                 config: .init(
                     micEnabled: micEnabled,
                     micDeviceUID: deviceUID,
-                    systemAudioEnabled: systemAudioEnabled))
+                    systemAudioEnabled: systemAudioEnabled),
+                onTeamsEnd: settings.stopOnTeamsEndChime ? stopOnChime : nil)
             systemAudioBanner = capture.systemAudioFailure ?? micBanner
             status = .recording
             hasRecording = true
@@ -288,6 +296,7 @@ public final class RecordingController {
     }
 
     private func stop() async {
+        guard status == .recording else { return }
         status = .stopping
         capture?.stop()  // finishes the stream; ingest drains what's left
         await ingestTask?.value
