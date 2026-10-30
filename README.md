@@ -34,6 +34,34 @@ Speaker detection happens on your Mac. Transcription, transcript cleanup,
 summaries, file conversion, and chat run through your own ChatGPT account. No
 separate Simbi account or API key is needed.
 
+## Differences from upstream
+
+This is [dzzzy90's fork](https://github.com/dzzzy90/simbi) of
+[predict-woo/simbi](https://github.com/predict-woo/simbi). The `main` branch
+currently tracks upstream's app code; the fork feature below is available on
+[`teams-auto-stop`](https://github.com/dzzzy90/simbi/tree/teams-auto-stop).
+
+- **Stop recording on a Microsoft Teams exit chime.** During an active recording,
+  a local waveform matcher listens to captured system audio for the bundled Teams
+  call-ended or meeting-leave sound. A match stops the recording through Simbi's
+  normal stop flow.
+- **Configurable in Settings → Recording.** “Listen for the Teams end-call chime
+  to stop recording” is enabled by default. It requires system audio capture;
+  changes apply to the next recording.
+
+This detects sounds, not Teams meeting state: it does not automatically start
+recordings, and it cannot detect a silent call ending. Matching audio played
+outside Teams can also trigger a stop.
+
+To build this feature, clone this fork's feature branch, then follow the build
+steps below:
+
+```bash
+git clone --branch teams-auto-stop https://github.com/dzzzy90/simbi.git
+```
+
+The download links and documentation below are the original upstream resources.
+
 ## Why Simbi
 
 - **Your notes stay yours.** There is no database or proprietary format. Notes
